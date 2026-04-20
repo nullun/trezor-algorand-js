@@ -133,7 +133,7 @@ export function encodeAlgorandGetPublicKey(
 
 export function decodeAlgorandPublicKey(buf: Uint8Array): Uint8Array {
   const r = new Reader(buf);
-  let publicKey = new Uint8Array(0);
+  let publicKey: Uint8Array = new Uint8Array(0);
   while (!r.done) {
     const { field, wireType } = r.readTag();
     if (field === 1 && wireType === WireType.LEN) publicKey = r.readBytes();
@@ -246,7 +246,7 @@ export function encodeAlgorandSignData(
 
 export function decodeAlgorandDataSignature(buf: Uint8Array): Uint8Array {
   const r = new Reader(buf);
-  let signature = new Uint8Array(0);
+  let signature: Uint8Array = new Uint8Array(0);
   while (!r.done) {
     const { field, wireType } = r.readTag();
     if (field === 1 && wireType === WireType.LEN) signature = r.readBytes();

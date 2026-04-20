@@ -96,7 +96,10 @@ export class WebUsbTransport implements TrezorTransport {
     if (chunk.length !== CHUNK_SIZE) {
       throw new TransportError(`write chunk must be ${CHUNK_SIZE} bytes`);
     }
-    const result = await this.device.transferOut(WEBUSB_ENDPOINT, chunk);
+    // Copy into an ArrayBuffer-backed view so TS BufferSource is satisfied.
+    const view = new Uint8Array(chunk.byteLength);
+    view.set(chunk);
+    const result = await this.device.transferOut(WEBUSB_ENDPOINT, view);
     if (result.status !== "ok") {
       throw new TransportError(`WebUSB transferOut failed: ${result.status}`);
     }
