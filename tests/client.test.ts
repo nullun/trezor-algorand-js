@@ -9,6 +9,7 @@ import {
   UserRejectedError,
   CapabilityMissingError,
   ProtocolError,
+  TrezorAlgorandError,
 } from "../src/core/errors.js";
 
 function featuresPayload(capabilities: number[], bootloaderMode = false): Uint8Array {
@@ -177,6 +178,67 @@ describe("TrezorAlgorandClient", () => {
     const p = TrezorAlgorandClient.connect(pair.host);
     await respondInitialize(pair, [], true);
     await expect(p).rejects.toThrow(/bootloader/);
+  });
+
+  it("serializes concurrent requests on the same client", async () => {
+    const pair = new MockTransportPair();
+    const p = TrezorAlgorandClient.connect(pair.host);
+    await respondInitialize(pair, [ALGORAND_CAPABILITY]);
+    const client = await p;
+
+    const a = client.getAddress({ path: [1] });
+    const b = client.getAddress({ path: [2] });
+
+    // First request must arrive and complete fully before the second is read.
+    const req1 = await readMessage(pair.device);
+    expect(req1.type).toBe(MessageType.AlgorandGetAddress);
+
+    // Verify the second request hasn't been written yet.
+    let secondArrived = false;
+    const req2Promise = readMessage(pair.device).then((m) => {
+      secondArrived = true;
+      return m;
+    });
+    await new Promise((r) => setTimeout(r, 5));
+    expect(secondArrived).toBe(false);
+
+    const r1 = new Writer();
+    r1.writeString(1, "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+    await writeMessage(pair.device, {
+      type: MessageType.AlgorandAddress,
+      payload: r1.bytes(),
+    });
+    await a;
+
+    const req2 = await req2Promise;
+    expect(req2.type).toBe(MessageType.AlgorandGetAddress);
+    const r2 = new Writer();
+    r2.writeString(1, "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB");
+    await writeMessage(pair.device, {
+      type: MessageType.AlgorandAddress,
+      payload: r2.bytes(),
+    });
+    await b;
+  });
+
+  it("maps an unmapped Failure code to a generic TrezorAlgorandError", async () => {
+    const pair = new MockTransportPair();
+    const p = TrezorAlgorandClient.connect(pair.host);
+    await respondInitialize(pair, [ALGORAND_CAPABILITY]);
+    const client = await p;
+
+    const req = client.getAddress({ path: [1] });
+    await readMessage(pair.device);
+    const f = new Writer();
+    f.writeUint32(1, 99); // FirmwareError
+    f.writeString(2, "boom");
+    await writeMessage(pair.device, {
+      type: MessageType.Failure,
+      payload: f.bytes(),
+    });
+    const err = await req.catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(TrezorAlgorandError);
+    expect((err as TrezorAlgorandError).code).toBe("FAILURE_99");
   });
 
   it("throws a ProtocolError on unexpected response type", async () => {
