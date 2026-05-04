@@ -14,11 +14,17 @@ export function parsePath(path: string): number[] {
     if (raw.length === 0) throw new InvalidPathError(`empty segment in ${path}`);
     const hardened = raw.endsWith("'") || raw.endsWith("h");
     const numStr = hardened ? raw.slice(0, -1) : raw;
-    const n = Number(numStr);
+    if (!/^\d+$/.test(numStr)) {
+      throw new InvalidPathError(`invalid segment '${raw}' in ${path}`);
+    }
+    const n = parseInt(numStr, 10);
     if (!Number.isInteger(n) || n < 0 || n >= HARDENED) {
       throw new InvalidPathError(`invalid segment '${raw}' in ${path}`);
     }
     out.push(hardened ? (n | HARDENED) >>> 0 : n);
+  }
+  if (out.length === 0) {
+    throw new InvalidPathError(`path has no segments: ${path}`);
   }
   return out;
 }

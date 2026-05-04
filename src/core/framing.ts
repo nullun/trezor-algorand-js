@@ -72,9 +72,10 @@ export async function readMessage(
   if (first[1] !== HEADER_MAGIC || first[2] !== HEADER_MAGIC) {
     throw new ProtocolError("missing '##' header magic");
   }
-  const msgType = (first[3]! << 8) | first[4]!;
+  const msgType = ((first[3]! << 8) | first[4]!) >>> 0;
   const dataLen =
-    (first[5]! << 24) | (first[6]! << 16) | (first[7]! << 8) | first[8]!;
+    ((first[5]! << 24) | (first[6]! << 16) | (first[7]! << 8) | first[8]!) >>>
+    0;
   const out = new Uint8Array(dataLen);
   let copied = Math.min(dataLen, first.length - 9);
   out.set(first.subarray(9, 9 + copied), 0);
