@@ -71,6 +71,9 @@ export class WebUsbTransport implements TrezorTransport {
         await this.device.selectConfiguration(1);
       }
       await this.device.claimInterface(WEBUSB_INTERFACE);
+      // Some host stacks need the alternate setting selected explicitly
+      // before transferIn returns data — matches trezor-link's WebUSB path.
+      await this.device.selectAlternateInterface(WEBUSB_INTERFACE, 0);
       this.opened = true;
     } catch (err) {
       throw new TransportError(`failed to open WebUSB device: ${(err as Error).message}`);
@@ -112,11 +115,17 @@ export class WebUsbTransport implements TrezorTransport {
       throw new TransportError(`WebUSB transferIn failed: ${result.status}`);
     }
     if (!result.data) throw new TransportError("WebUSB transferIn returned no data");
-    return new Uint8Array(
-      result.data.buffer,
-      result.data.byteOffset,
-      result.data.byteLength,
+    // Copy out — the underlying ArrayBuffer is owned by WebUSB and may be
+    // reused on the next transferIn.
+    const out = new Uint8Array(result.data.byteLength);
+    out.set(
+      new Uint8Array(
+        result.data.buffer,
+        result.data.byteOffset,
+        result.data.byteLength,
+      ),
     );
+    return out;
   }
 }
 
