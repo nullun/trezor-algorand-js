@@ -15,8 +15,7 @@ v0 — Ed25519 signing only. Known limitations:
 
 - Trezor One is not yet supported (WebHID transport needed).
 - Rekeyed accounts are not supported; the firmware requires the
-  transaction sender to equal the derived signer. See `docs/lute-integration.md`
-  in the companion Lute integration notes.
+  transaction sender to equal the derived signer.
 - Falcon post-quantum signing is defined in the protobuf schema but
   not yet exposed through the client.
 

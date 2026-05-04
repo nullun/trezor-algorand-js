@@ -3,38 +3,66 @@
   "version": "0.1.0",
   "description": "Browser-first host library for signing Algorand transactions with Trezor devices running the forked firmware.",
   "license": "MIT",
+  "author": "nullun",
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     },
     "./core": {
       "types": "./dist/core/index.d.ts",
-      "import": "./dist/core/index.js"
+      "import": "./dist/core/index.js",
+      "default": "./dist/core/index.js"
     },
     "./webusb": {
       "types": "./dist/webusb/index.d.ts",
-      "import": "./dist/webusb/index.js"
+      "import": "./dist/webusb/index.js",
+      "default": "./dist/webusb/index.js"
     },
     "./types": {
       "types": "./dist/types/index.d.ts",
-      "import": "./dist/types/index.js"
+      "import": "./dist/types/index.js",
+      "default": "./dist/types/index.js"
     }
   },
   "files": [
     "dist",
     "src",
+    "LICENSE",
     "README.md"
   ],
+  "keywords": [
+    "trezor",
+    "algorand",
+    "hardware-wallet",
+    "webusb",
+    "ed25519",
+    "signing"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nullun/trezor-algorand-js.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nullun/trezor-algorand-js/issues"
+  },
+  "homepage": "https://github.com/nullun/trezor-algorand-js#readme",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
   },
   "devDependencies": {
     "@types/w3c-web-usb": "^1.0.10",
