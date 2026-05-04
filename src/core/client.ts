@@ -19,6 +19,7 @@ import {
   encodeAlgorandTxAck,
   encodeGetFeatures,
   encodeInitialize,
+  type Features,
 } from "./messages.js";
 import { Session } from "./session.js";
 import { ALGORAND_CAPABILITY } from "../types/index.js";
@@ -36,8 +37,13 @@ export class TrezorAlgorandClient {
   private readonly session: Session;
   private features?: TrezorFeatures;
 
-  private constructor(private readonly transport: TrezorTransport) {
-    this.session = new Session(transport);
+  private constructor(
+    private readonly transport: TrezorTransport,
+    options: ConnectOptions,
+  ) {
+    this.session = new Session(transport, {
+      passphraseSource: options.passphraseSource,
+    });
   }
 
   static async connect(
@@ -45,7 +51,7 @@ export class TrezorAlgorandClient {
     options: ConnectOptions = {},
   ): Promise<TrezorAlgorandClient> {
     await transport.open();
-    const client = new TrezorAlgorandClient(transport);
+    const client = new TrezorAlgorandClient(transport, options);
     const features = await client.initialize();
     if (features.bootloaderMode) {
       await transport.close().catch(() => {});
@@ -71,22 +77,8 @@ export class TrezorAlgorandClient {
         `expected Features response to Initialize, got ${resp.type}`,
       );
     }
-    const f = decodeFeatures(resp.payload);
-    const features: TrezorFeatures = {
-      vendor: f.vendor,
-      model: f.model,
-      internalModel: f.internalModel,
-      majorVersion: f.majorVersion,
-      minorVersion: f.minorVersion,
-      patchVersion: f.patchVersion,
-      capabilities: f.capabilities,
-      bootloaderMode: f.bootloaderMode,
-      deviceId: f.deviceId,
-      label: f.label,
-      initialized: f.initialized,
-    };
-    this.features = features;
-    return features;
+    this.features = toTrezorFeatures(decodeFeatures(resp.payload));
+    return this.features;
   }
 
   async getFeatures(): Promise<TrezorFeatures> {
@@ -99,20 +91,7 @@ export class TrezorAlgorandClient {
         `expected Features response to GetFeatures, got ${resp.type}`,
       );
     }
-    const f = decodeFeatures(resp.payload);
-    this.features = {
-      vendor: f.vendor,
-      model: f.model,
-      internalModel: f.internalModel,
-      majorVersion: f.majorVersion,
-      minorVersion: f.minorVersion,
-      patchVersion: f.patchVersion,
-      capabilities: f.capabilities,
-      bootloaderMode: f.bootloaderMode,
-      deviceId: f.deviceId,
-      label: f.label,
-      initialized: f.initialized,
-    };
+    this.features = toTrezorFeatures(decodeFeatures(resp.payload));
     return this.features;
   }
 
@@ -166,40 +145,39 @@ export class TrezorAlgorandClient {
       );
     }
 
-    let resp = await this.session.call(
-      MessageType.AlgorandSignTx,
-      encodeAlgorandSignTx(path, txs[0]!, txs.length, 0, 0),
-    );
+    return this.session.transact(async (tx) => {
+      let resp = await tx.call(
+        MessageType.AlgorandSignTx,
+        encodeAlgorandSignTx(path, txs[0]!, txs.length, 0, 0),
+      );
 
-    for (let i = 1; i < txs.length; i++) {
-      if (resp.type !== MessageType.AlgorandTxRequest) {
+      for (let i = 1; i < txs.length; i++) {
+        if (resp.type !== MessageType.AlgorandTxRequest) {
+          throw new ProtocolError(
+            `expected AlgorandTxRequest at group index ${i}, got ${resp.type}`,
+          );
+        }
+        // The device echoes the expected index — validate but don't rely on it.
+        decodeAlgorandTxRequest(resp.payload);
+        await tx.send(MessageType.AlgorandTxAck, encodeAlgorandTxAck(txs[i]!));
+        resp = await tx.receive();
+      }
+
+      if (resp.type !== MessageType.AlgorandTxSignature) {
         throw new ProtocolError(
-          `expected AlgorandTxRequest at group index ${i}, got ${resp.type}`,
+          `expected AlgorandTxSignature, got ${resp.type}`,
         );
       }
-      // The device echoes the expected index — validate but don't rely on it.
-      decodeAlgorandTxRequest(resp.payload);
-      await this.session.send(
-        MessageType.AlgorandTxAck,
-        encodeAlgorandTxAck(txs[i]!),
-      );
-      resp = await this.session.receive();
-    }
+      const sig = decodeAlgorandTxSignature(resp.payload);
 
-    if (resp.type !== MessageType.AlgorandTxSignature) {
-      throw new ProtocolError(
-        `expected AlgorandTxSignature, got ${resp.type}`,
-      );
-    }
-    const sig = decodeAlgorandTxSignature(resp.payload);
-
-    if (txs.length === 1) return [sig.signature];
-    if (sig.groupSignatures.length !== txs.length) {
-      throw new ProtocolError(
-        `group signature count mismatch: expected ${txs.length}, got ${sig.groupSignatures.length}`,
-      );
-    }
-    return sig.groupSignatures;
+      if (txs.length === 1) return [sig.signature];
+      if (sig.groupSignatures.length !== txs.length) {
+        throw new ProtocolError(
+          `group signature count mismatch: expected ${txs.length}, got ${sig.groupSignatures.length}`,
+        );
+      }
+      return sig.groupSignatures;
+    });
   }
 
   async signData(params: SignDataParams): Promise<Uint8Array> {
@@ -224,4 +202,20 @@ export class TrezorAlgorandClient {
   async close(): Promise<void> {
     await this.transport.close();
   }
+}
+
+function toTrezorFeatures(f: Features): TrezorFeatures {
+  return {
+    vendor: f.vendor,
+    model: f.model,
+    internalModel: f.internalModel,
+    majorVersion: f.majorVersion,
+    minorVersion: f.minorVersion,
+    patchVersion: f.patchVersion,
+    capabilities: f.capabilities,
+    bootloaderMode: f.bootloaderMode,
+    deviceId: f.deviceId,
+    label: f.label,
+    initialized: f.initialized,
+  };
 }

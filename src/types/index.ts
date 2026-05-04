@@ -15,10 +15,21 @@ export interface TrezorTransport {
   readonly chunkSize: number;
 }
 
+// How the host should respond to a PassphraseRequest from the device.
+//
+// `{ onDevice: true }` (the default) tells the device to collect the
+// passphrase via its own UI — required for "passphrase always on device"
+// configurations on Trezor T / Safe. Use `{ passphrase }` only when the
+// host has prompted the user and is forwarding the secret on their behalf.
+export type PassphraseSource =
+  | { onDevice: true }
+  | { passphrase: string };
+
 export interface ConnectOptions {
   transport?: "webusb";
   requireAlgorandCapability?: boolean;
   device?: USBDevice;
+  passphraseSource?: PassphraseSource;
 }
 
 export interface TrezorFeatures {

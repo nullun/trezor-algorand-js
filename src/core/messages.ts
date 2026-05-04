@@ -108,9 +108,13 @@ export function encodeButtonAck(): Uint8Array {
   return new Uint8Array(0);
 }
 
-export function encodePassphraseAck(passphrase = ""): Uint8Array {
+export function encodePassphraseAck(
+  passphrase = "",
+  onDevice = false,
+): Uint8Array {
   const w = new Writer();
   if (passphrase.length > 0) w.writeString(1, passphrase);
+  if (onDevice) w.writeBool(3, true);
   return w.bytes();
 }
 
