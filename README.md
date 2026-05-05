@@ -80,12 +80,20 @@ A minimal Node transport built on the [`usb`][usb] package is included in
 not shipped as part of the package and adds no dependencies to consumers
 who don't need it.
 
+## Examples
+
+- [`examples/browser/`](examples/browser/) — single-file HTML demo using
+  an import map and esm.sh; no build step. Connects over WebUSB and
+  derives an Algorand address.
+- [`examples/node-usb/`](examples/node-usb/) — reference Node transport
+  built on `usb` (libusb), to copy into a CLI project.
+
 ## Layout
 
 - `src/core` — protocol core: protobuf codec, framing, session, client.
 - `src/webusb` — browser WebUSB transport.
 - `src/types` — exported request/response types, Algorand constants.
-- `examples/node-usb` — reference Node transport (not published).
+- `examples/` — runnable examples (not published).
 
 ## Tests
 

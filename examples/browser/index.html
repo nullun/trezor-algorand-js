@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>trezor-algorand-js — browser example</title>
+<style>
+  body { font: 14px/1.5 system-ui, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; color: #222; }
+  h1 { font-size: 1.25rem; }
+  button { font: inherit; padding: 0.4rem 0.9rem; margin: 0 0.4rem 0.4rem 0; cursor: pointer; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  input { font: inherit; padding: 0.25rem 0.5rem; width: 5rem; }
+  label { margin-right: 0.5rem; }
+  .row { margin: 1rem 0; }
+  pre { background: #f4f4f4; padding: 0.75rem; overflow-x: auto; min-height: 2.5em; white-space: pre-wrap; word-break: break-all; }
+  pre.err { background: #fde8e8; }
+  pre.ok  { background: #e6f4ea; }
+  code { background: #f4f4f4; padding: 0 0.2em; }
+</style>
+</head>
+<body>
+<h1>trezor-algorand-js — browser example</h1>
+<p>
+  Derives an Algorand address from a Trezor device over WebUSB.
+  Serve this directory from a localhost HTTP server (e.g.
+  <code>python3 -m http.server</code>) — WebUSB requires a secure context
+  and will not work from <code>file://</code>.
+</p>
+
+<div class="row">
+  <button id="connect">Connect Trezor</button>
+  <button id="disconnect" disabled>Disconnect</button>
+</div>
+
+<div class="row">
+  <label for="account">Account index</label>
+  <input id="account" type="number" min="0" value="0" />
+  <button id="getAddress" disabled>Get address</button>
+  <button id="showAddress" disabled>Show on device</button>
+</div>
+
+<pre id="output">Idle.</pre>
+
+<script type="importmap">
+{
+  "imports": {
+    "trezor-algorand-js": "https://esm.sh/trezor-algorand-js@0.1.0"
+  }
+}
+</script>
+
+<script type="module">
+import {
+  TrezorAlgorandClient,
+  WebUsbTransport,
+  defaultAlgorandPath,
+} from "trezor-algorand-js";
+
+const out = document.getElementById("output");
+const connectBtn = document.getElementById("connect");
+const disconnectBtn = document.getElementById("disconnect");
+const getAddressBtn = document.getElementById("getAddress");
+const showAddressBtn = document.getElementById("showAddress");
+const accountInput = document.getElementById("account");
+
+let client = null;
+
+function log(msg, cls = "") {
+  out.textContent = msg;
+  out.className = cls;
+}
+
+if (!("usb" in navigator)) {
+  log("WebUSB is not available in this browser. Try Chrome or Edge.", "err");
+  connectBtn.disabled = true;
+}
+
+connectBtn.addEventListener("click", async () => {
+  connectBtn.disabled = true;
+  log("Requesting device…");
+  try {
+    const transport = await WebUsbTransport.request();
+    client = await TrezorAlgorandClient.connect(transport);
+    const f = client.cachedFeatures();
+    const label = f?.label ?? "(unlabeled)";
+    log(`Connected to ${f?.model ?? "Trezor"} — ${label}`, "ok");
+    disconnectBtn.disabled = false;
+    getAddressBtn.disabled = false;
+    showAddressBtn.disabled = false;
+  } catch (err) {
+    log(`Connect failed: ${err.message}`, "err");
+    connectBtn.disabled = false;
+  }
+});
+
+disconnectBtn.addEventListener("click", async () => {
+  if (!client) return;
+  await client.close().catch(() => {});
+  client = null;
+  log("Disconnected.");
+  connectBtn.disabled = false;
+  disconnectBtn.disabled = true;
+  getAddressBtn.disabled = true;
+  showAddressBtn.disabled = true;
+});
+
+async function deriveAddress(showDisplay) {
+  if (!client) return;
+  const account = Math.max(0, Math.floor(Number(accountInput.value) || 0));
+  const path = defaultAlgorandPath(account);
+  log(`Deriving address for account ${account}${showDisplay ? " (confirm on device)" : ""}…`);
+  try {
+    const address = await client.getAddress({ path, showDisplay });
+    log(`Account ${account}: ${address}`, "ok");
+  } catch (err) {
+    log(`getAddress failed: ${err.message}`, "err");
+  }
+}
+
+getAddressBtn.addEventListener("click", () => deriveAddress(false));
+showAddressBtn.addEventListener("click", () => deriveAddress(true));
+
+// Signing is not wired to the UI — it needs a canonical msgpack-encoded
+// Algorand transaction. The shape is:
+//
+//   const sig  = await client.signTx({ path, tx: canonicalMsgpackBytes });
+//   const sigs = await client.signTxGroup({ path, txs: [tx0, tx1] });
+</script>
+</body>
+</html>
