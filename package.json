@@ -1,7 +1,7 @@
 {
   "name": "trezor-algorand-js",
   "version": "0.1.0",
-  "description": "Browser-first host library for signing Algorand transactions with Trezor devices running the forked firmware.",
+  "description": "Host library for signing Algorand transactions with Trezor devices running the forked firmware. Ships a WebUSB transport; bring your own TrezorTransport for Node.",
   "license": "MIT",
   "author": "nullun",
   "type": "module",

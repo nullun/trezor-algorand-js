@@ -1,13 +1,18 @@
 # trezor-algorand-js
 
-Browser-first host library for signing Algorand transactions with a Trezor
-device running the [Algorand-capable firmware fork][fork].
+Host library for signing Algorand transactions with a Trezor device running
+the [Algorand-capable firmware fork][fork].
 
 This package intentionally stays thin: it owns the Trezor wire protocol,
-protobuf codecs for the Algorand message set, a WebUSB transport, and a
-small `TrezorAlgorandClient` surface. It does **not** depend on `algosdk`
-and operates on raw canonical MsgPack transaction bytes so it is reusable
-by wallets, CLIs, and tests.
+protobuf codecs for the Algorand message set, a WebUSB transport for the
+browser, and a small `TrezorAlgorandClient` surface. It does **not** depend
+on `algosdk` and operates on raw canonical MsgPack transaction bytes so it
+is reusable by wallets, CLIs, and tests.
+
+The package itself has no runtime dependencies. The bundled WebUSB
+transport is the reference implementation; for Node or other environments,
+implement the `TrezorTransport` interface against the USB stack of your
+choice (see [Transports](#transports)).
 
 ## Status
 
@@ -42,11 +47,45 @@ const groupSigs = await client.signTxGroup({ path, txs: [tx0, tx1] });
 await client.close();
 ```
 
+For Node, import the protocol core directly to avoid pulling in the
+WebUSB-specific code:
+
+```ts
+import { TrezorAlgorandClient } from "trezor-algorand-js/core";
+import type { TrezorTransport } from "trezor-algorand-js/types";
+```
+
+## Transports
+
+`TrezorAlgorandClient.connect()` accepts any object that satisfies the
+`TrezorTransport` contract:
+
+```ts
+interface TrezorTransport {
+  open(): Promise<void>;
+  close(): Promise<void>;
+  write(chunk: Uint8Array): Promise<void>;     // exactly chunkSize bytes
+  read(timeoutMs?: number): Promise<Uint8Array>; // exactly chunkSize bytes
+  readonly chunkSize: number;                  // 64 for Trezor Core
+}
+```
+
+`write` and `read` exchange single 64-byte HID-style report chunks; framing,
+session locking, and protobuf encoding are handled by the core. The bundled
+`WebUsbTransport` (`src/webusb/transport.ts`, ~150 lines) is the reference
+implementation — copy its shape when targeting another USB stack.
+
+A minimal Node transport built on the [`usb`][usb] package is included in
+[`examples/node-usb/`](examples/node-usb/) for CLI authors to copy. It is
+not shipped as part of the package and adds no dependencies to consumers
+who don't need it.
+
 ## Layout
 
 - `src/core` — protocol core: protobuf codec, framing, session, client.
 - `src/webusb` — browser WebUSB transport.
 - `src/types` — exported request/response types, Algorand constants.
+- `examples/node-usb` — reference Node transport (not published).
 
 ## Tests
 
@@ -58,3 +97,4 @@ npm run build     # emit dist/
 ```
 
 [fork]: https://github.com/nullun/trezor-firmware
+[usb]: https://www.npmjs.com/package/usb
