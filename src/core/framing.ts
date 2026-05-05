@@ -59,18 +59,21 @@ export async function readMessage(
   transport: TrezorTransport,
   timeoutMs?: number,
 ): Promise<WireMessage> {
-  // first chunk: expect `?##` + 6-byte header
-  const first = await readChunk(transport, timeoutMs);
-  if (first.length < 1 + 2 + HEADER_LEN) {
-    throw new ProtocolError("short initial chunk");
-  }
-  if (first[0] !== REPORT_MAGIC) {
-    throw new ProtocolError(
-      `missing report magic 0x3f, got 0x${first[0]!.toString(16)}`,
-    );
-  }
-  if (first[1] !== HEADER_MAGIC || first[2] !== HEADER_MAGIC) {
-    throw new ProtocolError("missing '##' header magic");
+  // Skip any leading continuation chunks buffered by the host from a
+  // previous session; they start with `?` but lack the `##` header marker.
+  let first: Uint8Array;
+  while (true) {
+    first = await readChunk(transport, timeoutMs);
+    if (first.length < 1 + 2 + HEADER_LEN) {
+      throw new ProtocolError("short initial chunk");
+    }
+    if (first[0] !== REPORT_MAGIC) {
+      throw new ProtocolError(
+        `missing report magic 0x3f, got 0x${first[0]!.toString(16)}`,
+      );
+    }
+    if (first[1] === HEADER_MAGIC && first[2] === HEADER_MAGIC) break;
+    // continuation chunk from a previous session — discard and try next
   }
   const msgType = ((first[3]! << 8) | first[4]!) >>> 0;
   const dataLen =

@@ -74,6 +74,20 @@ export class WebUsbTransport implements TrezorTransport {
       // Some host stacks need the alternate setting selected explicitly
       // before transferIn returns data — matches trezor-link's WebUSB path.
       await this.device.selectAlternateInterface(WEBUSB_INTERFACE, 0);
+      // Reset IN and OUT endpoint data toggles on each open. Without this,
+      // a stale toggle after reconnect causes Chrome to drop the device's IN
+      // packets (read timeout) or the device to drop our OUT packets
+      // (Initialize silently discarded, also a timeout).
+      try {
+        await this.device.clearHalt("in", WEBUSB_ENDPOINT);
+      } catch {
+        // ignore if unsupported
+      }
+      try {
+        await this.device.clearHalt("out", WEBUSB_ENDPOINT);
+      } catch {
+        // ignore if unsupported
+      }
       this.opened = true;
     } catch (err) {
       throw new TransportError(`failed to open WebUSB device: ${(err as Error).message}`);
