@@ -22,9 +22,9 @@
 <h1>trezor-algorand-js — browser example</h1>
 <p>
   Derives an Algorand address from a Trezor device over WebUSB.
-  Serve this directory from a localhost HTTP server (e.g.
-  <code>python3 -m http.server</code>) — WebUSB requires a secure context
-  and will not work from <code>file://</code>.
+  Run <code>npm run build</code> first, then serve the repo root over
+  HTTP — WebUSB requires a secure context and will not work from
+  <code>file://</code>.
 </p>
 
 <div class="row">
@@ -44,7 +44,7 @@
 <script type="importmap">
 {
   "imports": {
-    "trezor-algorand-js": "https://esm.sh/trezor-algorand-js@0.1.0"
+    "trezor-algorand-js": "../../dist/index.js"
   }
 }
 </script>

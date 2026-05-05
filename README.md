@@ -83,8 +83,8 @@ who don't need it.
 ## Examples
 
 - [`examples/browser/`](examples/browser/) — single-file HTML demo using
-  an import map and esm.sh; no build step. Connects over WebUSB and
-  derives an Algorand address.
+  an import map against the local `dist/` build; no bundler, no remote
+  dependencies. Connects over WebUSB and derives an Algorand address.
 - [`examples/node-usb/`](examples/node-usb/) — reference Node transport
   built on `usb` (libusb), to copy into a CLI project.
 
