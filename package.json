@@ -40,9 +40,12 @@
   "keywords": [
     "trezor",
     "algorand",
-    "hardware-wallet",
+    "hardware",
+    "wallet",
     "webusb",
     "ed25519",
+    "falcon",
+    "det1024",
     "signing"
   ],
   "repository": {

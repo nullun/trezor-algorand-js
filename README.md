@@ -16,17 +16,15 @@ choice (see [Transports](#transports)).
 
 ## Status
 
-v0 — Ed25519 signing, plus FALCON-DET1024 address derivation (the
-device returns the LogicSig contract account, FALCON public key, and
-counter; helpers in `src/core/logicsig.ts` reconstruct the TEAL program
-on the host). Known limitations:
+v0 — Ed25519 and FALCON-DET1024 transaction signing, plus FALCON address
+derivation (the device returns the LogicSig contract account, FALCON public
+key, and counter; helpers in `src/core/logicsig.ts` reconstruct the TEAL
+program on the host). ARC-60 structured data signing is supported via
+`signData`. Known limitations:
 
-- Trezor One is not yet supported (WebHID transport needed).
+- Trezor Model One is not supported.
 - Rekeyed accounts are not supported; the firmware requires the
   transaction sender to equal the derived signer.
-- FALCON-DET1024 transaction and data signing are defined in the
-  protobuf schema but not yet exposed through the client — only address
-  derivation is.
 
 ## Usage
 
@@ -35,6 +33,7 @@ import {
   TrezorAlgorandClient,
   WebUsbTransport,
   defaultAlgorandPath,
+  SignatureType,
 } from "trezor-algorand-js";
 
 const transport = await WebUsbTransport.request();
@@ -44,6 +43,13 @@ const path = defaultAlgorandPath(0);
 const address = await client.getAddress({ path });
 
 const signature = await client.signTx({ path, tx: canonicalMsgpackBytes });
+
+// FALCON-DET1024 transaction signing:
+const falconSig = await client.signTx({
+  path,
+  tx: canonicalMsgpackBytes,
+  signatureType: SignatureType.FALCON_DET1024,
+});
 
 const groupSigs = await client.signTxGroup({ path, txs: [tx0, tx1] });
 // signatures for txs whose sender != derived signer are returned as empty bytes.
@@ -68,9 +74,9 @@ import type { TrezorTransport } from "trezor-algorand-js/types";
 interface TrezorTransport {
   open(): Promise<void>;
   close(): Promise<void>;
-  write(chunk: Uint8Array): Promise<void>;     // exactly chunkSize bytes
+  write(chunk: Uint8Array): Promise<void>; // exactly chunkSize bytes
   read(timeoutMs?: number): Promise<Uint8Array>; // exactly chunkSize bytes
-  readonly chunkSize: number;                  // 64 for Trezor Core
+  readonly chunkSize: number; // 64 for Trezor Core
 }
 ```
 

@@ -153,12 +153,13 @@ export class TrezorAlgorandClient {
     const sigs = await this.signTxGroup({
       path: params.path,
       txs: [params.tx],
+      signatureType: params.signatureType,
     });
     return sigs[0]!;
   }
 
   async signTxGroup(params: SignTxGroupParams): Promise<Uint8Array[]> {
-    const { path, txs } = params;
+    const { path, txs, signatureType = 0 } = params;
     if (txs.length < 1 || txs.length > 16) {
       throw new InvalidGroupError(
         `Algorand group must be 1..16 transactions (got ${txs.length})`,
@@ -168,7 +169,7 @@ export class TrezorAlgorandClient {
     return this.session.transact(async (tx) => {
       let resp = await tx.call(
         MessageType.AlgorandSignTx,
-        encodeAlgorandSignTx(path, txs[0]!, txs.length, 0, 0),
+        encodeAlgorandSignTx(path, txs[0]!, txs.length, 0, signatureType),
       );
 
       for (let i = 1; i < txs.length; i++) {

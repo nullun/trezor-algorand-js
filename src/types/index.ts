@@ -26,9 +26,7 @@ export type PassphraseSource =
   | { passphrase: string };
 
 export interface ConnectOptions {
-  transport?: "webusb";
   requireAlgorandCapability?: boolean;
-  device?: USBDevice;
   passphraseSource?: PassphraseSource;
 }
 
@@ -55,11 +53,13 @@ export interface GetAddressParams {
 export interface SignTxParams {
   path: number[];
   tx: Uint8Array;
+  signatureType?: SignatureType;
 }
 
 export interface SignTxGroupParams {
   path: number[];
   txs: Uint8Array[];
+  signatureType?: SignatureType;
 }
 
 export interface SignDataParams {
