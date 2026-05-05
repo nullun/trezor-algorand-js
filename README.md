@@ -16,13 +16,17 @@ choice (see [Transports](#transports)).
 
 ## Status
 
-v0 — Ed25519 signing only. Known limitations:
+v0 — Ed25519 signing, plus FALCON-DET1024 address derivation (the
+device returns the LogicSig contract account, FALCON public key, and
+counter; helpers in `src/core/logicsig.ts` reconstruct the TEAL program
+on the host). Known limitations:
 
 - Trezor One is not yet supported (WebHID transport needed).
 - Rekeyed accounts are not supported; the firmware requires the
   transaction sender to equal the derived signer.
-- Falcon post-quantum signing is defined in the protobuf schema but
-  not yet exposed through the client.
+- FALCON-DET1024 transaction and data signing are defined in the
+  protobuf schema but not yet exposed through the client — only address
+  derivation is.
 
 ## Usage
 

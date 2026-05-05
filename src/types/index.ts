@@ -76,3 +76,13 @@ export const SignatureType = {
 } as const;
 
 export type SignatureType = (typeof SignatureType)[keyof typeof SignatureType];
+
+// Returned by `TrezorAlgorandClient.getFalconAddress`. The device composes
+// the LogicSig contract account itself; `publicKey` and `counter` are the
+// inputs the host needs to reconstruct the program for tx submission.
+export interface FalconAddressResult {
+  address: string;
+  publicKey: Uint8Array;
+  counter?: number;
+  tealVersion?: number;
+}

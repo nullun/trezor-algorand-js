@@ -39,6 +39,12 @@
   <button id="showAddress" disabled>Show on device</button>
 </div>
 
+<div class="row">
+  <button id="getFalcon" disabled>Get FALCON address</button>
+  <button id="showFalcon" disabled>Show FALCON on device</button>
+  <label><input id="verbose" type="checkbox" /> Verbose (TEAL LogicSig)</label>
+</div>
+
 <pre id="output">Idle.</pre>
 
 <script type="importmap">
@@ -54,6 +60,7 @@ import {
   TrezorAlgorandClient,
   WebUsbTransport,
   defaultAlgorandPath,
+  formatFalconLogicSigTeal,
 } from "trezor-algorand-js";
 
 const out = document.getElementById("output");
@@ -61,6 +68,9 @@ const connectBtn = document.getElementById("connect");
 const disconnectBtn = document.getElementById("disconnect");
 const getAddressBtn = document.getElementById("getAddress");
 const showAddressBtn = document.getElementById("showAddress");
+const getFalconBtn = document.getElementById("getFalcon");
+const showFalconBtn = document.getElementById("showFalcon");
+const verboseInput = document.getElementById("verbose");
 const accountInput = document.getElementById("account");
 
 let client = null;
@@ -87,6 +97,8 @@ connectBtn.addEventListener("click", async () => {
     disconnectBtn.disabled = false;
     getAddressBtn.disabled = false;
     showAddressBtn.disabled = false;
+    getFalconBtn.disabled = false;
+    showFalconBtn.disabled = false;
   } catch (err) {
     log(`Connect failed: ${err.message}`, "err");
     connectBtn.disabled = false;
@@ -102,6 +114,8 @@ disconnectBtn.addEventListener("click", async () => {
   disconnectBtn.disabled = true;
   getAddressBtn.disabled = true;
   showAddressBtn.disabled = true;
+  getFalconBtn.disabled = true;
+  showFalconBtn.disabled = true;
 });
 
 async function deriveAddress(showDisplay) {
@@ -119,6 +133,38 @@ async function deriveAddress(showDisplay) {
 
 getAddressBtn.addEventListener("click", () => deriveAddress(false));
 showAddressBtn.addEventListener("click", () => deriveAddress(true));
+
+async function deriveFalconAddress(showDisplay) {
+  if (!client) return;
+  const account = Math.max(0, Math.floor(Number(accountInput.value) || 0));
+  const path = defaultAlgorandPath(account);
+  log(`Deriving FALCON address for account ${account}${showDisplay ? " (confirm on device)" : ""}…`);
+  try {
+    const result = await client.getFalconAddress({ path, showDisplay });
+    if (verboseInput.checked) {
+      const teal = formatFalconLogicSigTeal({
+        publicKey: result.publicKey,
+        counter: result.counter ?? 0,
+        tealVersion: result.tealVersion,
+      });
+      log(
+        `FALCON address: ${result.address}\n` +
+          `TEAL version:   ${result.tealVersion ?? "(unspecified)"}\n` +
+          `Counter:        ${result.counter ?? "(unspecified)"}\n` +
+          `Pubkey length:  ${result.publicKey.length} bytes\n\n` +
+          `LogicSig program:\n${teal}`,
+        "ok",
+      );
+    } else {
+      log(`Account ${account} (FALCON): ${result.address}`, "ok");
+    }
+  } catch (err) {
+    log(`getFalconAddress failed: ${err.message}`, "err");
+  }
+}
+
+getFalconBtn.addEventListener("click", () => deriveFalconAddress(false));
+showFalconBtn.addEventListener("click", () => deriveFalconAddress(true));
 
 // Signing is not wired to the UI — it needs a canonical msgpack-encoded
 // Algorand transaction. The shape is:

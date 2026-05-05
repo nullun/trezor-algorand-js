@@ -241,6 +241,33 @@ describe("TrezorAlgorandClient", () => {
     expect((err as TrezorAlgorandError).code).toBe("FAILURE_99");
   });
 
+  it("getFalconAddress sends GetFalconAddress and parses the rich response", async () => {
+    const pair = new MockTransportPair();
+    const p = TrezorAlgorandClient.connect(pair.host);
+    await respondInitialize(pair, [ALGORAND_CAPABILITY]);
+    const client = await p;
+
+    const reqPromise = client.getFalconAddress({ path: [1] });
+    const req = await readMessage(pair.device);
+    expect(req.type).toBe(MessageType.AlgorandGetFalconAddress);
+
+    const w = new Writer();
+    w.writeString(1, "Z".repeat(58));
+    w.writeBytes(2, new Uint8Array(1793).fill(0xcd));
+    w.writeUint32(3, 3);
+    w.writeUint32(4, 12);
+    await writeMessage(pair.device, {
+      type: MessageType.AlgorandFalconAddress,
+      payload: w.bytes(),
+    });
+
+    const result = await reqPromise;
+    expect(result.address.length).toBe(58);
+    expect(result.publicKey.length).toBe(1793);
+    expect(result.counter).toBe(3);
+    expect(result.tealVersion).toBe(12);
+  });
+
   it("throws a ProtocolError on unexpected response type", async () => {
     const pair = new MockTransportPair();
     const p = TrezorAlgorandClient.connect(pair.host);

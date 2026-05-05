@@ -3,6 +3,12 @@ export { Session } from "./session.js";
 export { MessageType } from "./messages.js";
 export { parsePath, defaultAlgorandPath } from "./path.js";
 export {
+  compileFalconLogicSig,
+  formatFalconLogicSigTeal,
+  DEFAULT_TEAL_VERSION,
+  type FalconLogicSigInputs,
+} from "./logicsig.js";
+export {
   TrezorAlgorandError,
   DeviceNotFoundError,
   DeviceBusyError,

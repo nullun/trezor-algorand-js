@@ -8,11 +8,13 @@ import {
   MessageType,
   decodeAlgorandAddress,
   decodeAlgorandDataSignature,
+  decodeAlgorandFalconAddress,
   decodeAlgorandPublicKey,
   decodeAlgorandTxRequest,
   decodeAlgorandTxSignature,
   decodeFeatures,
   encodeAlgorandGetAddress,
+  encodeAlgorandGetFalconAddress,
   encodeAlgorandGetPublicKey,
   encodeAlgorandSignData,
   encodeAlgorandSignTx,
@@ -25,6 +27,7 @@ import { Session } from "./session.js";
 import { ALGORAND_CAPABILITY } from "../types/index.js";
 import type {
   ConnectOptions,
+  FalconAddressResult,
   GetAddressParams,
   SignDataParams,
   SignTxGroupParams,
@@ -127,6 +130,23 @@ export class TrezorAlgorandClient {
       );
     }
     return decodeAlgorandAddress(resp.payload);
+  }
+
+  async getFalconAddress(params: GetAddressParams): Promise<FalconAddressResult> {
+    const resp = await this.session.call(
+      MessageType.AlgorandGetFalconAddress,
+      encodeAlgorandGetFalconAddress(
+        params.path,
+        params.showDisplay === true,
+        params.chunkify === true,
+      ),
+    );
+    if (resp.type !== MessageType.AlgorandFalconAddress) {
+      throw new ProtocolError(
+        `expected AlgorandFalconAddress, got ${resp.type}`,
+      );
+    }
+    return decodeAlgorandFalconAddress(resp.payload);
   }
 
   async signTx(params: SignTxParams): Promise<Uint8Array> {

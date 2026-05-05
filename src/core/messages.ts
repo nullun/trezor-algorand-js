@@ -1,4 +1,5 @@
 import { Reader, Writer, readRepeatedUint32Into, WireType } from "./protobuf.js";
+import type { FalconAddressResult } from "../types/index.js";
 
 // Message type IDs — must match common/protob/messages.proto in the fork.
 export const MessageType = {
@@ -257,4 +258,35 @@ export function decodeAlgorandDataSignature(buf: Uint8Array): Uint8Array {
     else r.skip(wireType);
   }
   return signature;
+}
+
+export function encodeAlgorandGetFalconAddress(
+  path: number[],
+  showDisplay: boolean,
+  chunkify: boolean,
+): Uint8Array {
+  const w = new Writer();
+  writePath(w, path);
+  if (showDisplay) w.writeBool(2, true);
+  if (chunkify) w.writeBool(3, true);
+  return w.bytes();
+}
+
+export function decodeAlgorandFalconAddress(buf: Uint8Array): FalconAddressResult {
+  const r = new Reader(buf);
+  const out: FalconAddressResult = {
+    address: "",
+    publicKey: new Uint8Array(0),
+  };
+  while (!r.done) {
+    const { field, wireType } = r.readTag();
+    switch (field) {
+      case 1: out.address = r.readString(); break;
+      case 2: out.publicKey = r.readBytes(); break;
+      case 3: out.counter = r.readUint32(); break;
+      case 4: out.tealVersion = r.readUint32(); break;
+      default: r.skip(wireType);
+    }
+  }
+  return out;
 }

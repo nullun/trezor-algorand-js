@@ -3,12 +3,14 @@ import { Reader, Writer } from "../src/core/protobuf.js";
 import {
   decodeAlgorandAddress,
   decodeAlgorandDataSignature,
+  decodeAlgorandFalconAddress,
   decodeAlgorandPublicKey,
   decodeAlgorandTxRequest,
   decodeAlgorandTxSignature,
   decodeFailure,
   decodeFeatures,
   encodeAlgorandGetAddress,
+  encodeAlgorandGetFalconAddress,
   encodeAlgorandGetPublicKey,
   encodeAlgorandSignData,
   encodeAlgorandSignTx,
@@ -162,5 +164,38 @@ describe("algorand message encode/decode", () => {
     const withFlags = encodeAlgorandGetAddress([1], true, true);
     const withoutFlags = encodeAlgorandGetAddress([1], false, false);
     expect(withFlags.length).toBeGreaterThan(withoutFlags.length);
+  });
+
+  it("encodes GetFalconAddress with the same shape as GetAddress", () => {
+    const path = [44 | 0x80000000, 283 | 0x80000000, 0 | 0x80000000];
+    expect([...encodeAlgorandGetFalconAddress(path, false, false)]).toEqual([
+      ...encodeAlgorandGetAddress(path, false, false),
+    ]);
+    expect([...encodeAlgorandGetFalconAddress(path, true, true)]).toEqual([
+      ...encodeAlgorandGetAddress(path, true, true),
+    ]);
+  });
+
+  it("decodes AlgorandFalconAddress with all four fields", () => {
+    const w = new Writer();
+    w.writeString(1, "FALCONLOGICSIGADDRESS".padEnd(58, "A"));
+    w.writeBytes(2, new Uint8Array(1793).fill(0xab));
+    w.writeUint32(3, 7);
+    w.writeUint32(4, 12);
+    const out = decodeAlgorandFalconAddress(w.bytes());
+    expect(out.address.length).toBe(58);
+    expect(out.publicKey.length).toBe(1793);
+    expect(out.publicKey[0]).toBe(0xab);
+    expect(out.counter).toBe(7);
+    expect(out.tealVersion).toBe(12);
+  });
+
+  it("decodes AlgorandFalconAddress with only required fields", () => {
+    const w = new Writer();
+    w.writeString(1, "X".repeat(58));
+    w.writeBytes(2, new Uint8Array(1793));
+    const out = decodeAlgorandFalconAddress(w.bytes());
+    expect(out.counter).toBeUndefined();
+    expect(out.tealVersion).toBeUndefined();
   });
 });
