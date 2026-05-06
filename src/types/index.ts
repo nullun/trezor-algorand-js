@@ -1,5 +1,5 @@
 export const ALGORAND_COIN_TYPE = 283;
-export const ALGORAND_CAPABILITY = 25;
+export const ALGORAND_CAPABILITY = 26;
 
 export const USB_IDS = {
   TREZOR_CORE: { vendorId: 0x1209, productId: 0x53c1 },
